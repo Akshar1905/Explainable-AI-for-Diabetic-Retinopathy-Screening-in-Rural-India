@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explainable AI for Diabetic Retinopathy Screening in Rural India</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-icon">👁️</div>
+        <div class="logo-title">
+          <div style="display: flex; align-items: center;">
+            <h1>RetinaX-AI</h1>
+            <span class="badge-sih">Academic PBL · XAI-DR</span>
+          </div>
+          <p>Explainable AI for Diabetic Retinopathy Screening in Rural India</p>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-metric">
+          <span class="label">Operating Point</span>
+          <span class="value highlight">P &ge; 0.40</span>
+        </div>
+        <div class="status-metric">
+          <span class="label">Sensitivity</span>
+          <span class="value" style="color: #34D399;">98.21%</span>
+        </div>
+        <div class="status-metric">
+          <span class="label">Specificity</span>
+          <span class="value">91.74%</span>
+        </div>
+        <div class="status-metric">
+          <span class="label">Calibration (T)</span>
+          <span class="value">2.1414</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-screening">
+        <span>🔬</span> Patient Screening Console
+      </button>
+      <button class="tab-btn" data-tab="tab-simulator">
+        <span>🏥</span> District Grader & Capacity Simulator
+      </button>
+      <button class="tab-btn" data-tab="tab-benchmark">
+        <span>📊</span> Model Ablation & Metric Set (A1–A13)
+      </button>
+      <button class="tab-btn" data-tab="tab-architecture">
+        <span>🛡️</span> Safety Policies & ADR Rules
+      </button>
+    </nav>
+
+    <!-- ====================================================================
+         VIEW 1: Patient Screening Console
+         ==================================================================== -->
+    <main id="tab-screening" class="view-panel active">
+      <div class="screening-grid">
+        
+        <!-- Left Column: Case Selector & Patient Metadata -->
+        <aside class="card">
+          <div class="card-title">
+            <span>Patient & Input Case</span>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">12 Clinical Presets</span>
+          </div>
+
+          <div class="case-select-group">
+            <label for="caseSelect">Select Retinal Fundus Case</label>
+            <select id="caseSelect" class="select-dropdown"></select>
+          </div>
+
+          <!-- Custom Upload Drop Zone -->
+          <div class="custom-upload-zone" id="uploadDropZone">
+            <input type="file" id="imageUploadInput" accept="image/*" style="display: none;">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Upload Custom Fundus Image</div>
+            <div class="upload-sub">PNG, JPG, TIFF (DICOM Compatible)</div>
+          </div>
+
+          <!-- Patient Metadata -->
+          <div class="patient-info-box">
+            <div class="info-row">
+              <span class="info-label">Patient ID</span>
+              <span class="info-val" id="patientIdVal">IND-MH-2026-0812</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Demographics</span>
+              <span class="info-val" id="patientAgeVal">48 yrs, Female</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Laterality</span>
+              <span class="info-val" id="patientEyeVal">OD (Right Eye)</span>
+            </div>
+            <div class="info-row" style="flex-direction: column; gap: 0.2rem; margin-top: 0.3rem;">
+              <span class="info-label">Case Description</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.3;" id="patientDescVal"></span>
+            </div>
+          </div>
+
+          <!-- Quality Gate Widget -->
+          <div class="quality-gate-widget" id="qualityWidget">
+            <div class="quality-header">
+              <span style="font-size: 0.75rem; font-weight: 700;">STAGE 1: QUALITY GATE</span>
+              <span class="quality-status-badge badge-gradable" id="qualityStatusBadge">Gradable (Passed)</span>
+            </div>
+            <div class="quality-meter">
+              <div class="quality-fill" id="qualityFill" style="width: 88%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 0.35rem;">
+              <span style="color: var(--text-dim);">Sharpness (Tenengrad)</span>
+              <span style="font-family: var(--font-mono); font-weight: 700;" id="qualityScoreVal">88.4 / 100</span>
+            </div>
+            <div class="quality-advice" id="qualityAdvice">Optimal image quality. No recapture needed.</div>
+          </div>
+        </aside>
+
+        <!-- Center Column: Dual Retinal Canvas & Explainability Overlays -->
+        <section class="viewer-container">
+          <div class="viewer-canvas-wrapper">
+            <canvas id="retinaCanvas" width="512" height="512"></canvas>
+            <div class="canvas-loading-overlay" id="canvasSpinner">
+              <div class="spinner"></div>
+              <span style="font-size: 0.8rem; font-weight: 600;">Running Inference...</span>
+            </div>
+          </div>
+
+          <!-- Viewer Layer Controls -->
+          <div class="viewer-controls">
+            <div class="control-row">
+              <div class="chip-group">
+                <button class="chip-toggle active" id="toggleGradCAM">🔥 Grad-CAM Heatmap</button>
+                <button class="chip-toggle active ex" id="toggleEX">🟡 Exudates (EX)</button>
+                <button class="chip-toggle active he" id="toggleHE">🔴 Hemorrhages (HE)</button>
+                <button class="chip-toggle active ma" id="toggleMA">🟣 Microaneurysms (MA)</button>
+                <button class="chip-toggle active se" id="toggleSE">⚪ Soft Exudates (SE)</button>
+              </div>
+
+              <div class="slider-group">
+                <label for="gradCamSlider">Heatmap α:</label>
+                <input type="range" id="gradCamSlider" min="0" max="1" step="0.05" value="0.65">
+                <span id="gradCamOpacityVal" style="font-family: var(--font-mono); font-weight: 700; width: 35px;">65%</span>
+              </div>
+            </div>
+
+            <div class="control-row" style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 0.6rem;">
+              <div class="chip-group">
+                <button class="chip-toggle" id="toggleQuadrants">✛ 4-Quadrant Grid</button>
+                <button class="chip-toggle" id="toggleEnhance">✨ Green CLAHE View</button>
+              </div>
+
+              <button class="btn-secondary" id="btnExportReport" style="padding: 0.4rem 0.85rem; font-size: 0.78rem;">
+                📄 Generate Clinical Report
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right Column: 3-Way Triage & Calibrated Probabilities -->
+        <aside class="card decision-card">
+          <div class="card-title">
+            <span>Diagnostic Triage & Safety</span>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">3-Way Decision</span>
+          </div>
+
+          <!-- Triage Hero Banner -->
+          <div class="triage-hero badge-autoclear" id="triageHero">
+            <div class="triage-title">Screening Decision</div>
+            <div class="triage-verdict" id="triageVerdict">AUTO-CLEAR</div>
+            <div class="triage-reason" id="triageReason">
+              Calibrated referable risk is 2.3% (below 40.0% threshold). Quality gate passed and no lesions detected.
+            </div>
+          </div>
+
+          <!-- Calibrated Probabilities -->
+          <div class="prob-section">
+            <div class="prob-header">
+              <span>ICDR Severity Level</span>
+              <span style="text-align: right;">Raw CNN</span>
+              <span style="text-align: right;">Calibrated (T)</span>
+            </div>
+            <div id="probTableBody"></div>
+          </div>
+
+          <!-- Verification Checklist -->
+          <div class="verification-checklist" id="verificationChecklist"></div>
+
+          <button class="btn-primary" id="btnRunScreening" onclick="loadCase(currentCaseIndex)">
+            <span>⚡</span> Re-Evaluate Case Seam
+          </button>
+        </aside>
+
+      </div>
+    </main>
+
+    <!-- ====================================================================
+         VIEW 2: District Capacity & Grader Simulation (Simulink mirror)
+         ==================================================================== -->
+    <section id="tab-simulator" class="view-panel">
+      <div class="sim-grid">
+        
+        <!-- Controls -->
+        <div class="card">
+          <div class="card-title">
+            <span>District Parameters</span>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Simulink Model Mirror</span>
+          </div>
+
+          <div class="sim-input-group">
+            <div class="sim-input-label">
+              <span>District Diabetic Population</span>
+              <span id="simPopVal">100,000</span>
+            </div>
+            <input type="range" id="simPopInput" min="10000" max="500000" step="10000" value="100000">
+          </div>
+
+          <div class="sim-input-group">
+            <div class="sim-input-label">
+              <span>Annual Screening Compliance</span>
+              <span id="simComplianceVal">40%</span>
+            </div>
+            <input type="range" id="simComplianceInput" min="10" max="90" step="5" value="40">
+          </div>
+
+          <div class="sim-input-group">
+            <div class="sim-input-label">
+              <span>Available Graders / Ophthalmologists</span>
+              <span id="simGradersVal">4 Specialists</span>
+            </div>
+            <input type="range" id="simGradersInput" min="1" max="20" step="1" value="4">
+          </div>
+
+          <div class="sim-input-group">
+            <div class="sim-input-label">
+              <span>Autonomous Auto-Clear Rate</span>
+              <span id="simCoverageVal">32.7%</span>
+            </div>
+            <input type="range" id="simCoverageInput" min="10" max="60" step="1" value="33">
+          </div>
+
+          <div style="background: rgba(0, 0, 0, 0.25); padding: 0.75rem; border-radius: 8px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+            💡 <strong>Simulink Formulation</strong>: Simulates rural primary health centre (PHC) patient queues, autonomous deferrals, and ophthalmologist workload over 250 operational clinic days per year.
+          </div>
+        </div>
+
+        <!-- Simulation Results & KPIs -->
+        <div class="card">
+          <div class="card-title">
+            <span>District Screening Impact & Resource Optimization</span>
+            <span class="badge-sih">Annual Simulation</span>
+          </div>
+
+          <div class="sim-kpi-grid">
+            <div class="sim-kpi-card">
+              <div class="sim-kpi-val" id="simAnnualImages">80,000</div>
+              <div class="sim-kpi-label">Total Fundus Images / Year</div>
+            </div>
+
+            <div class="sim-kpi-card green">
+              <div class="sim-kpi-val" style="color: #34D399;" id="simAutoDecided">26,160</div>
+              <div class="sim-kpi-label">Auto-Cleared Without Doctor</div>
+            </div>
+
+            <div class="sim-kpi-card amber">
+              <div class="sim-kpi-val" style="color: #FBBF24;" id="simHumanCaseload">53,840</div>
+              <div class="sim-kpi-label">Referred for Human Review</div>
+            </div>
+
+            <div class="sim-kpi-card green">
+              <div class="sim-kpi-val" style="color: #38BDF8;" id="simHoursSaved">1,744 hrs</div>
+              <div class="sim-kpi-label">Ophthalmologist Hours Saved</div>
+            </div>
+
+            <div class="sim-kpi-card green">
+              <div class="sim-kpi-val" style="color: #34D399;" id="simCostSaved">₹23.5 Lakhs</div>
+              <div class="sim-kpi-label">Estimated Healthcare Savings</div>
+            </div>
+
+            <div class="sim-kpi-card green">
+              <div class="sim-kpi-val" id="simBacklogDays">0 (No Backlog)</div>
+              <div class="sim-kpi-label">Estimated Grader Backlog</div>
+            </div>
+          </div>
+
+          <!-- Visual Bar Chart -->
+          <div class="sim-chart-box">
+            <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-main);">
+              Workload Split Distribution
+            </div>
+            <div style="display: flex; height: 32px; border-radius: 8px; overflow: hidden; font-size: 0.75rem; font-weight: 700;">
+              <div id="simBarAuto" style="background: #059669; color: #ECFDF5; display: flex; align-items: center; justify-content: center; width: 33%; transition: width 0.3s ease;">
+                Auto: 33%
+              </div>
+              <div id="simBarHuman" style="background: #D97706; color: #FFFBEB; display: flex; align-items: center; justify-content: center; width: 67%; transition: width 0.3s ease;">
+                Human: 67%
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VIEW 3: Benchmark & Ablation Study (A1–A13)
+         ==================================================================== -->
+    <section id="tab-benchmark" class="view-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Ablation Study & Configuration Matrix (§11.6)</span>
+          <span style="font-size: 0.72rem; color: var(--text-dim);">Validation Split (n = 550)</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="styled-table">
+            <thead>
+              <tr>
+                <th>Config</th>
+                <th>Evidence Channel</th>
+                <th>Agreement Rule</th>
+                <th>Coverage</th>
+                <th>Sensitivity</th>
+                <th>Specificity</th>
+                <th>Referable Sent Home</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A1</td>
+                <td>None (Classifier Only)</td>
+                <td>N/A</td>
+                <td>1.0000</td>
+                <td>0.9821</td>
+                <td>0.9174</td>
+                <td>1</td>
+                <td>Baseline</td>
+              </tr>
+              <tr>
+                <td>A6</td>
+                <td>Learned U-Net (All 4 Heads)</td>
+                <td>Level Equality</td>
+                <td>0.0000</td>
+                <td>1.0000</td>
+                <td>0.0000</td>
+                <td>0</td>
+                <td>All Escalated</td>
+              </tr>
+              <tr>
+                <td>A8</td>
+                <td>Learned U-Net (Hard Exudates Only)</td>
+                <td>Level Equality</td>
+                <td>0.0691</td>
+                <td>0.8072</td>
+                <td>0.8257</td>
+                <td>0</td>
+                <td>Over-escalation</td>
+              </tr>
+              <tr class="frozen">
+                <td>A10 ★</td>
+                <td>Learned U-Net (Hard Exudates)</td>
+                <td>Endpoint Comparison</td>
+                <td>0.3273</td>
+                <td>0.9821</td>
+                <td>0.9174</td>
+                <td>0</td>
+                <td>FROZEN DEFAULT</td>
+              </tr>
+              <tr>
+                <td>A12</td>
+                <td>Learned U-Net + Relaxed Gate</td>
+                <td>Endpoint Comparison</td>
+                <td>0.3600</td>
+                <td>0.9700</td>
+                <td>0.9050</td>
+                <td>2</td>
+                <td>REJECTED (ADR-0001 Veto)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 1rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+          📌 <strong>Why A10 was chosen</strong>: Configuration A10 achieves 32.73% autonomous coverage with <strong>zero referable patients sent home</strong>. A12 raised coverage slightly higher but sent 2 sick patients home, and was permanently vetoed under <a href="#" style="color: #38BDF8;">ADR-0001 (Equal-Coverage Safety Veto)</a>.
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VIEW 4: Safety Policies & Architecture
+         ==================================================================== -->
+    <section id="tab-architecture" class="view-panel">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        
+        <div class="card">
+          <div class="card-title">
+            <span>Architectural Decision Records (ADRs)</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.82rem;">
+            <div style="background: rgba(0, 0, 0, 0.25); padding: 0.85rem; border-radius: 8px; border-left: 3px solid var(--primary);">
+              <h4 style="color: #38BDF8; margin-bottom: 0.25rem;">ADR 0001: Equal-Coverage Safety Veto</h4>
+              <p style="color: var(--text-muted); font-size: 0.76rem;">
+                A configuration is inadmissible if it sends more referable patients home than the standalone classifier at the same coverage. Miss count is non-negotiable.
+              </p>
+            </div>
+
+            <div style="background: rgba(0, 0, 0, 0.25); padding: 0.85rem; border-radius: 8px; border-left: 3px solid var(--primary);">
+              <h4 style="color: #38BDF8; margin-bottom: 0.25rem;">ADR 0002: Keep the Grad-CAM Spatial Gate</h4>
+              <p style="color: var(--text-muted); font-size: 0.76rem;">
+                The spatial agreement check between Grad-CAM regional attention and U-Net lesion coordinates must remain active to prevent spurious feature hallucination.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>Safety Invariants & Clinical Guardrails</span>
+          </div>
+
+          <ul style="list-style-type: disc; margin-left: 1.25rem; font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.5rem;">
+            <li><strong>Always Escalate Level 4</strong>: Proliferative Diabetic Retinopathy (PDR) is never auto-cleared or auto-referred without clinician confirmation.</li>
+            <li><strong>Temperature Scaling</strong>: Raw softmax probabilities are never treated as calibrated risk; temperature $T = 2.1414$ is applied.</li>
+            <li><strong>Single Preprocessing Seam</strong>: Training and inference share exact byte-identical preprocessing logic (448&times;448, Green CLAHE).</li>
+            <li><strong>Sealed External Test Set</strong>: Messidor-2 dataset is protected under recorded cryptographical seal.</li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ====================================================================
+       Modal: Clinical Diagnostic Report (Printable)
+       ==================================================================== -->
+  <div class="modal-overlay" id="reportModal">
+    <div class="modal-content">
+      <button class="modal-close-btn" id="btnCloseModal">&times;</button>
+      
+      <div class="report-header">
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF;">DIABETIC RETINOPATHY SCREENING REPORT</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Explainable AI Screening Decision Support System (XAI-DR)</p>
+        </div>
+        <div style="text-align: right;">
+          <span class="quality-status-badge badge-gradable" id="modalTriageBadge">AUTO-CLEAR</span>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <h3>Patient & Examination Data</h3>
+        <div class="report-grid">
+          <div><strong>Patient ID:</strong> <span id="modalPatientId"></span></div>
+          <div><strong>Exam Date:</strong> <span id="modalDate"></span></div>
+          <div><strong>Demographics:</strong> <span id="modalAgeEye"></span></div>
+          <div><strong>Operating Threshold:</strong> <span>P &ge; 0.40 (Frozen)</span></div>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <h3>Quality Gate & Diagnostic Findings</h3>
+        <div class="report-grid">
+          <div><strong>Image Quality:</strong> <span id="modalQuality"></span></div>
+          <div><strong>Calibrated Referable Risk:</strong> <span id="modalRisk"></span></div>
+          <div><strong>Spatial Agreement:</strong> <span id="modalSpatial"></span></div>
+          <div><strong>Model Backbone:</strong> <span>ResNet-50 (T = 2.1414)</span></div>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <h3>Clinical Decision Rationale</h3>
+        <p style="font-size: 0.82rem; color: var(--text-main); background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px;" id="modalReason"></p>
+      </div>
+
+      <div class="report-disclaimer">
+        ⚠️ <strong>Medical Disclaimer</strong>: This software is a research prototype screening aid and not an autonomous medical device. All findings must be reviewed and confirmed by a certified ophthalmologist.
+      </div>
+
+      <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button class="btn-primary" id="btnPrintReport" style="width: auto; padding: 0.6rem 1.25rem;">
+          🖨️ Print / Save as PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="cases.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
