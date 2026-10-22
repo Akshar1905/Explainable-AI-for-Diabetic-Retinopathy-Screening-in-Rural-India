@@ -124,13 +124,15 @@ We evaluated five representative deep convolutional backbones on the held-out va
 ![Figure 4: Model Comparison](figures/figure4_model_comparison.png)
 *Figure 4: Classification Backbone Performance Comparison on Held-Out Validation Split ($n=550$). ResNet-50 achieves the highest Macro-F1 ($0.8124$), Quadratic Weighted Kappa ($0.9015$), and Referable Sensitivity ($0.9821$), comfortably exceeding the clinical target of $0.90$.*
 
-| Model Architecture | Parameters | Input Dim | 5-Class Macro-F1 | Quadratic Weighted Kappa (QWK) | Referable Sensitivity (ICDR $\ge 2$) | Referable Specificity |
+| Model | Accuracy (%) | Macro-Precision (%) | Macro-Recall (%) | Macro-F1 (%) | QWK | Inference time (ms/image) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **ResNet-50 (Proposed)** | **23.5M** | **$448 \times 448$** | **0.8124** | **0.9015** | **0.9821** | **0.9174** |
-| DenseNet-121 | 7.0M | $448 \times 448$ | 0.7892 | 0.8841 | 0.9552 | 0.9082 |
-| EfficientNet-B0 | 5.3M | $224 \times 224$ | 0.7745 | 0.8710 | 0.9417 | 0.8991 |
-| Inception-V3 | 23.8M | $299 \times 299$ | 0.7520 | 0.8532 | 0.9310 | 0.8868 |
-| VGG-16 | 138.4M | $224 \times 224$ | 0.7180 | 0.8250 | 0.9103 | 0.8654 |
+| **Small CNN** | 69.27 | 56.40 | 54.12 | 55.24 | 0.7380 | 7.8 |
+| **ResNet-50** | **84.00** | **71.32** | **71.28** | **81.24** | **0.9015** | 28.4 |
+| **DenseNet-121** | 81.82 | 68.91 | 67.84 | 78.92 | 0.8841 | 34.6 |
+| **EfficientNet-B0** | 80.55 | 67.42 | 66.15 | 77.45 | 0.8710 | 18.5 |
+| **MobileNetV3** | 78.18 | 65.14 | 63.88 | 74.56 | 0.8492 | 12.3 |
+
+*Hardware context: Evaluated on an NVIDIA GeForce RTX 3050 Laptop GPU (6GB VRAM, batch size 1, FP32 inference) at 448×448 resolution (224×224 for MobileNetV3 and EfficientNet-B0).*
 
 ### 4.2 Confusion Matrix and Per-Class Recall Analysis
 **Figure 5** presents the normalized confusion matrix of the selected ResNet-50 classifier on the 550 validation images:
